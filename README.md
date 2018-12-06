@@ -1,6 +1,6 @@
 # ImageNet Tools
 
-In here you will find an object that facilitates the retrival of data from the ImageNet dataset.
+In here you will find an object that facilitates the retrieval of data from the ImageNet dataset.
 
 ## How it works
 
