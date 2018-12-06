@@ -37,3 +37,46 @@ data = tool.get_data(bs=2)
 ----
 
 **NOTE:** `readable_id_classes.txt` was taken from [here.](https://gist.github.com/aaronpolhamus/964a4411c0906315deb9f4a3723aac57)
+
+## ImageNet dataset structure
+
+The structure of the ImageNet dataset is as follow. For what I understand, `CLS-LOC` refere classification and localization respectively. Also, each xml only contain a sigle object per image. More info [here.](https://github.com/wk910930/ILSVRC2014_devkit/blob/master/readme.txt)
+
+```
+.
+├── Annotations
+│        └── CLS-LOC
+│               ├── test
+│               │    ├── n01440764_18.xml
+│               │    ├── n01440764_37.xml
+│               │    ├── n01440764_39.xml
+│               │    └── ...
+│               │    
+│               └── train
+│                     └── ...
+│
+├── Data
+│     └── CLS-LOC
+│            ├── test
+│            │    └── ...
+│            ├── train
+│            │     ├── n01440764
+│            │     │       ├── n01440764_18.JPEG
+│            │     │       ├── n01440764_36.JPEG
+│            │     │       ├── n01440764_37.JPEG
+│            │     │       └── ...
+│            │     │
+│            │     ├── n01443537
+│            │     ├── n01484850
+│            │     └── ...
+│            │
+│            └── val
+│                 └── ...
+│
+└── ImageSets
+        └── CLS-LOC
+               ├── test.txt
+               ├── train_cls.txt
+               ├── train_loc.txt
+               └── val.txt
+```
