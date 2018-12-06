@@ -16,7 +16,7 @@ json_path = 'id2class.json'
 Next, import the object class `ImageNetTool`, initialize an object, and ask for the data.
 
 ```python
-from utils_ImageNet.py import ImageNetTool
+from utils_ImageNet import ImageNetTool
 
 # Initialize it
 tool = ImageNetTool(fpaths=fpaths_path,ims_dir=ims_dir,bboxes_dir=bboxes_dir,
@@ -26,8 +26,14 @@ tool = ImageNetTool(fpaths=fpaths_path,ims_dir=ims_dir,bboxes_dir=bboxes_dir,
 data = tool.get_data(bs=2)
 ```
 
+----
+
 `data` is a dictionary containing three elements: `'images'`,`'classes'`,`'bboxes'`. Each element is a list containing the images (cv2|np), classes (str), and bboxes (list).
 
+----
+
 `data['bboxes']` is a list of list with the form `[[x_min,y_min,x_max,y_max,class]]`.
+
+----
 
 **NOTE:** `readable_id_classes.txt` was taken from [here.](https://gist.github.com/aaronpolhamus/964a4411c0906315deb9f4a3723aac57)
