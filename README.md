@@ -52,7 +52,7 @@ The structure of the ImageNet dataset is as follow. For what I understand, `CLS-
 │               │    ├── n01440764_39.xml
 │               │    └── ...
 │               │    
-│               └── train
+│               └── val
 │                     └── ...
 │
 ├── Data
