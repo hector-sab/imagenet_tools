@@ -148,6 +148,9 @@ class ImageNetTool:
 
 		return({'images':ims,'classes':classes,'bboxes':bboxes})
 
+	def reset(self):
+		self.current_ind = 0
+
 if __name__=='__main__':
 	ims_dir = '/data/DataBases/ImageNet/Object_Localization/ILSVRC/Data/CLS-LOC/train/'
 	bboxes_dir = '/data/DataBases/ImageNet/Object_Localization/ILSVRC/Annotations/CLS-LOC/train/'
