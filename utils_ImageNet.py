@@ -49,8 +49,10 @@ def bboxes_loader_xml_imagenet(path,args=None):
 	return(bboxes)
 
 class ImageNetClassifierData:
+	# When you have the bbox location of the objects, and you want to provide
+	# the exact portion of the object in the image, use this class.
 	def __init__(self,fpaths,ims_dir,bboxes_lbs_dir,json_path,
-		rand=False):
+		rand=True):
 		self.ims_dir = ims_dir # Directory of the folders containing the images
 		self.bboxes_dir = bboxes_lbs_dir # Directory of the folders containing the xml's
 
@@ -60,12 +62,6 @@ class ImageNetClassifierData:
 		self.id2class_dict = self.load_json(json_path) # Contains a dict with
 		                                              # the conversion between ids
 		                                              # and classes {'n04012':['person',14]}
-
-		self.class2ind = {} # {'person':14}
-		for key in self.id2class_dict:
-			class_name = self.id2class_dict[key][0]
-			class_id = self.id2class_dict[key][1]
-			self.class2ind[class_name] = class_id
 
 		self.total_items = len(self.paths)
 		self.current_ind = 0
@@ -126,14 +122,16 @@ class ImageNetClassifierData:
 			# Calculates the padding to make it square
 			wp = int((h-w)/2)
 			# Place the image in the container
-			im_sq[:,wp:wp+w,...] = im
+			im_sq[:,wp:wp+w] = im
 		elif w>h:
 			im_sq = np.zeros((w,w,3))
 			
 			hp = int((w-h)/2)
-			im_sq[hp:hp+h,:,...] = im
+			im_sq[hp:hp+h,:] = im
 		else:
 			im_sq = im
+
+		im_sq = im_sq.astype(np.uint8)
 
 		# Makes the image of the desired size
 		im_sq = cv2.resize(im_sq,shape)
@@ -147,14 +145,14 @@ class ImageNetClassifierData:
 		clss = [] # Cotnains the classes of the objects
 		bboxes = bboxes_loader_xml_imagenet(bboxes_path)
 		for bbox in bboxes:
-			clss.append(self.class2ind[bbox[4]])
+			clss.append(self.id2class(bbox[4]))
 			bbox_im = self.get_single_object_from_im(im,bbox)
 			bbox_im = self.convert2square_im(bbox_im)
 			ims.append(bbox_im)
 
 		return(ims,clss)
 
-	def next_batch(self,bs=0):
+	def next_batch(self,bs=1):
 		# Retrieve a batch of data. When it reaches the last example
 		# the lists will be empty.
 		# It returns a dictionary {'images':[],'classes':[],'bboxes':[]}
@@ -297,8 +295,12 @@ class ImageNetTool:
 if __name__=='__main__':
 	ims_dir = '/data/DataBases/ImageNet/Object_Localization/ILSVRC/Data/CLS-LOC/train/'
 	bboxes_dir = '/data/DataBases/ImageNet/Object_Localization/ILSVRC/Annotations/CLS-LOC/train/'
-	fpaths_path = '/data/DataBases/ImageNet/Object_Localization/ILSVRC/ImageSets/CLS-LOC/train_cls.txt'
+	fpaths_path = '/data/DataBases/ImageNet/Object_Localization/ILSVRC/ImageSets/CLS-LOC/train_loc.txt'
 	json_path = 'id2class.json'
 
-	tool = ImageNetTool(fpaths=fpaths_path,ims_dir=ims_dir,bboxes_dir=bboxes_dir,
-		json_path=json_path)
+	if False:
+		tool = ImageNetTool(fpaths=fpaths_path,ims_dir=ims_dir,bboxes_dir=bboxes_dir,
+			json_path=json_path)
+	else:
+		tool = ImageNetClassifierData(fpaths=fpaths_path,ims_dir=ims_dir,
+			bboxes_lbs_dir=bboxes_dir,json_path=json_path)
