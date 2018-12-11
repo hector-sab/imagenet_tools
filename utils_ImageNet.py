@@ -2,6 +2,9 @@ import os
 import cv2
 import json
 import numpy as np
+from random import shuffle
+
+import xml.etree.ElementTree as ET
 
 def bboxes_loader_xml_imagenet(path,args=None):
 	# args (tuple): Not needed. If provided:
@@ -48,7 +51,8 @@ def bboxes_loader_xml_imagenet(path,args=None):
 class ImageNetTool:
 	# Object that facilitates the retrieval of data from the ImageNet
 	# dataset.
-	def __init__(self,fpaths,ims_dir,bboxes_dir=None,json_path=None):
+	def __init__(self,fpaths,ims_dir,bboxes_dir=None,json_path=None,
+		rand=False):
 		# Args:
 		#    fpaths (str): Path to the txt file containing the paths of the files
 		#    ims_dir (str): Directory containing the folders of the images
@@ -57,6 +61,7 @@ class ImageNetTool:
 		#        between the id's and the name of the classes
 
 		self.paths = self.load_fpaths(fpaths) # Contains the paths to all the data
+		if rand: shuffle(self.paths)
 		self.ims_dir = ims_dir # Directory of the folders containing the images
 		self.bboxes_dir = bboxes_dir # Directory of the folders containing the xml's
 		
@@ -114,7 +119,7 @@ class ImageNetTool:
 
 		return(im,clss,bboxes)
 
-	def get_data(self,bs=0):
+	def next_batch(self,bs=0):
 		# Retrieve a batch of data. When it reaches the last example
 		# the lists will be empty.
 		# It returns a dictionary {'images':[],'classes':[],'bboxes':[]}
