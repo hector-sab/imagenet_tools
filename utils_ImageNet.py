@@ -48,6 +48,144 @@ def bboxes_loader_xml_imagenet(path,args=None):
 		bboxes.append(bbox)
 	return(bboxes)
 
+class ImageNetClassifierData:
+	def __init__(self,fpaths,ims_dir,bboxes_lbs_dir,json_path,
+		rand=False):
+		self.ims_dir = ims_dir # Directory of the folders containing the images
+		self.bboxes_dir = bboxes_lbs_dir # Directory of the folders containing the xml's
+
+		self.paths = self.load_fpaths(fpaths) # Contains the paths to all the data
+		if rand: shuffle(self.paths)
+
+		self.id2class_dict = self.load_json(json_path) # Contains a dict with
+		                                              # the conversion between ids
+		                                              # and classes {'n04012':['person',14]}
+
+		self.class2ind = {} # {'person':14}
+		for key in self.id2class_dict:
+			class_name = self.id2class_dict[key][0]
+			class_id = self.id2class_dict[key][1]
+			self.class2ind[class_name] = class_id
+
+		self.total_items = len(self.paths)
+		self.current_ind = 0
+
+	def load_fpaths(self,path):
+		# Loads the paths of all the data into a list
+		with open(path,'r') as f:
+			lines = f.readlines()
+
+		paths = []
+		for line in lines:
+			line = line.strip('\n')
+			line = line.split(' ')
+			paths.append(line[0])
+		return(paths)
+
+	def load_json(self,path):
+		# Loads the dictionary (json file) containing the conversion
+		# between id's and class names
+		id2class = None
+		if path is not None and os.path.exists(path):
+			with open(path,'r') as f:
+				id2class = json.loads(f.read())
+		return(id2class)
+
+	def load_image(self,path):
+		im = None
+		if os.path.exists(path):
+			im = cv2.imread(path)
+			im = im[...,::-1]
+			im = im.astype(np.uint8)
+		return(im)
+
+	def id2class(self,ident):
+		clss = None
+		if self.id2class_dict is not None:
+			if ident in self.id2class_dict.keys():
+				clss = self.id2class_dict[ident][1] # 0: Name of the class
+				                                    # 1: Number of the class
+		return(clss)
+
+	def get_single_object_from_im(self,im,bbox):
+		# Returns the area of the image where the object is
+		# bbox [x_left,y_top,x_right,y_bottom]
+		ob_im = im[bbox[1]:bbox[3],bbox[0]:bbox[2],...]
+		return(ob_im)
+
+	def convert2square_im(self,im,shape=(208,208)):
+		# shape: (Height,Width)
+		h = im.shape[0]
+		w = im.shape[1]
+
+		biggest = None
+		smallest = None
+		if h>w:
+			# Creates the container for the square image
+			im_sq = np.zeros((h,h,3))
+			# Calculates the padding to make it square
+			wp = int((h-w)/2)
+			# Place the image in the container
+			im_sq[:,wp:wp+w,...] = im
+		elif w>h:
+			im_sq = np.zeros((w,w,3))
+			
+			hp = int((w-h)/2)
+			im_sq[hp:hp+h,:,...] = im
+		else:
+			im_sq = im
+
+		# Makes the image of the desired size
+		im_sq = cv2.resize(im_sq,shape)
+
+		return(im_sq)
+
+	def get_single_file(self,im_path,bboxes_path):
+		im = self.load_image(im_path)
+
+		ims = [] # Contains the object images
+		clss = [] # Cotnains the classes of the objects
+		bboxes = bboxes_loader_xml_imagenet(bboxes_path)
+		for bbox in bboxes:
+			clss.append(self.class2ind[bbox[4]])
+			bbox_im = self.get_single_object_from_im(im,bbox)
+			bbox_im = self.convert2square_im(bbox_im)
+			ims.append(bbox_im)
+
+		return(ims,clss)
+
+	def next_batch(self,bs=0):
+		# Retrieve a batch of data. When it reaches the last example
+		# the lists will be empty.
+		# It returns a dictionary {'images':[],'classes':[],'bboxes':[]}
+		# 
+		# Args:
+		#    bs (int): batch size
+
+		ind = self.current_ind
+		if ind<self.total_items-1:
+			paths = self.paths[ind:ind+bs]
+		else:
+			paths = []
+
+		ims = []
+		classes = []
+
+		for path in paths:
+			im_path = os.path.join(self.ims_dir,path+'.JPEG')
+			bbox_path = os.path.join(self.bboxes_dir,path+'.xml')
+
+			im,clss = self.get_single_file(im_path,bbox_path)
+			ims += im
+			classes += clss
+
+		self.current_ind += bs
+
+		return({'images':ims,'classes':classes})
+
+	def reset(self):
+		self.current_ind = 0
+
 class ImageNetTool:
 	# Object that facilitates the retrieval of data from the ImageNet
 	# dataset.
