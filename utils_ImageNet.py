@@ -302,5 +302,6 @@ if __name__=='__main__':
 		tool = ImageNetTool(fpaths=fpaths_path,ims_dir=ims_dir,bboxes_dir=bboxes_dir,
 			json_path=json_path)
 	else:
+		# It will return the image with the exact location of the object and its class
 		tool = ImageNetClassifierData(fpaths=fpaths_path,ims_dir=ims_dir,
 			bboxes_lbs_dir=bboxes_dir,json_path=json_path)
