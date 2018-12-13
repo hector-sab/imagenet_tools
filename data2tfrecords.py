@@ -1,4 +1,6 @@
 import os
+import cv2
+import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
 
@@ -40,16 +42,25 @@ class TFRCreatorClassifier:
 		self.fpaths_path = '/data/DataBases/ImageNet/Object_Localization/ILSVRC/ImageSets/CLS-LOC/train_loc.txt'
 		self.json_path = 'id2class.json'
 
-		self.loader = ImageNetTool(fpaths=fpaths_path,ims_dir=ims_dir,bboxes_dir=bboxes_dir,
-			json_path=json_path)
+		self.loader = ImageNetTool(fpaths=self.fpaths_path,ims_dir=self.ims_dir,
+			bboxes_dir=self.bboxes_dir,json_path=self.json_path)
 
 		self.total_items = self.loader.total_items
 
 		self.idx_tfrecord = 0
 
+		self.clss2ind = {}
+		for key in self.loader.id2class_dict:
+			cname = self.loader.id2class_dict[key][0]
+			self.clss2ind[cname] = self.loader.id2class_dict[key][1]
+
 	# conversion functions (data to feature data types)
 	def _bytes_feature(self,value):
 		return(tf.train.Feature(bytes_list=tf.train.BytesList(
+			value=[value])))
+
+	def _int64_feature(self,value):
+		return(tf.train.Feature(int64_list=tf.train.Int64List(
 			value=[value])))
 
 	def data2tfrecord(self,im,ind,writer):
@@ -57,7 +68,7 @@ class TFRCreatorClassifier:
 			features=tf.train.Features(
 				feature={
 					'image': self._bytes_feature(im.tostring()),
-					'label': self._bytes_feature(ind.tostring())
+					'label': self._int64_feature(ind)
 				}))
 		writer.write(example.SerializeToString())
 
@@ -68,7 +79,7 @@ class TFRCreatorClassifier:
 		if init_tfind is not None:
 			self.idx_tfrecord = init_tfind
 
-		total_its = (self.total_items/bs)
+		total_its = int(self.total_items/bs)
 		if self.total_items%bs!=0:
 			total_its += 1
 		
@@ -79,7 +90,7 @@ class TFRCreatorClassifier:
 			with tf.python_io.TFRecordWriter(filename_tfrecord) as writer:
 				for im,class_name in zip(batch['images'],batch['classes']):
 					im = convert2square_im(im)
-					ind = tool.id2class_dict[class_name][1]
+					ind = self.clss2ind[class_name]
 					self.data2tfrecord(im,ind,writer)
 
 			self.idx_tfrecord += 1
@@ -91,6 +102,6 @@ class TFRCreatorClassifier:
 if __name__=='__main__':
 
 	tool = TFRCreatorClassifier()
-	tool.run()
+	tool.run(out_dir='/data/HectorSanchez/database/imagenet_tfrecords/train_cls/')
 
 
