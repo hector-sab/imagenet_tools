@@ -168,6 +168,8 @@ class ILSVRC2012TrainDataLoader:
 def ILSVRC2012TrainCLSDataWriter(batch,writer):
 	# https://mc.ai/storage-efficient-tfrecord-for-images/
 	for im,clss in zip(batch['images'],batch['classes']):
+		height = im.shape[0]
+		width = im.shape[1]
 		encoded_im_str = cv2.imencode('.jpg',im)[1].tostring()
 		
 		im = tf.compat.as_bytes(encoded_im_str)
@@ -175,8 +177,8 @@ def ILSVRC2012TrainCLSDataWriter(batch,writer):
 		
 		feature = {
 			'image':_bytes_feature(im),
-			'height':_int64_feature(im.shape[0]),
-			'width':_int64_feature(im.shape[1]),
+			'height':_int64_feature(height),
+			'width':_int64_feature(width),
 			'label':_int64_feature(clss)
 		}
 
