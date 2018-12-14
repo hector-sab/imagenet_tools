@@ -175,6 +175,8 @@ def ILSVRC2012TrainCLSDataWriter(batch,writer):
 		
 		feature = {
 			'image':_bytes_feature(im),
+			'height':_int64_feature(im.shape[0]),
+			'width':_int64_feature(im.shape[1]),
 			'label':_int64_feature(clss)
 		}
 
@@ -214,15 +216,36 @@ class TFRecordsCreator:
 
 
 
+def _extract_features(example):
+	features = {
+			'image':tf.FixedLenFeature([],tf.string),
+			'label':tf.FixedLenFeature([], tf.int64)
+		}
+	parse_example = tf.parse_single_example(example,features)
+	image = tf.decode_raw(parsed_example['image'],tf.float32)
+	label = tf.cast(parsed_example['image'],tf.int32)
+	return(image,label)
+
+
 class ILSVRC2012TrainTFRecordDataLoader:
 	def __init__(self,data_dir):
-		self.fnames = sorted(os.listdir(data_dir))
-		self.fnames = [os.path.join(data_dir,x) for x in self.fnames]
-
+		#https://medium.com/@dikatok/making-life-better-read-easier-with-tensorflow-dataset-api-fb91851e51f4
+		fnames = sorted(os.listdir(data_dir))
+		fnames = [os.path.join(data_dir,x) for x in self.fnames]
 		self.dataset = tf.data.TFRecordDataset(self.fnames)
+
+		
+		#http://www.machinelearninguru.com/deep_learning/tensorflow/basics/tfrecord/tfrecord.html
+		self.features = {
+			'image':tf.FixedLenFeature([],tf.string),
+			'label':tf.FixedLenFeature([], tf.int64)
+		}
+
+		
 
 	def next_batch(self):
 		features = tf.parse_single_example()
+		
 
 class TFRecordsLoader:
 	def __init__(self,data_loader,data_dir):
