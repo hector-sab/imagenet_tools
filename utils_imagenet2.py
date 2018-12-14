@@ -1,8 +1,11 @@
 import os
 import cv2
+import json
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
+from random import shuffle
+import xml.etree.ElementTree as ET
 
 def load_image(path):
 		im = None
@@ -59,6 +62,11 @@ def _bytes_feature(value):
 	# Used for images
 	return(tf.train.Feature(bytes_list=tf.train.BytesList(
 		value=[value])))
+
+def _int64_feature(value):
+		# Used for int
+		return(tf.train.Feature(int64_list=tf.train.Int64List(
+			value=[value])))
 
 class ILSVRC2012TrainDataLoader:
 	def __init__(self,fpaths,ims_dir,lbs_dir=None,
@@ -157,17 +165,17 @@ class ILSVRC2012TrainDataLoader:
 	def reset(self):
 		self.current_ind = 0
 
-def ILSVRC2012TrainCLSDataWriter(self,batch,writer):
+def ILSVRC2012TrainCLSDataWriter(batch,writer):
 	# https://mc.ai/storage-efficient-tfrecord-for-images/
 	for im,clss in zip(batch['images'],batch['classes']):
 		encoded_im_str = cv2.imencode('.jpg',im)[1].tostring()
 		
 		im = tf.compat.as_bytes(encoded_im_str)
-		clss = tf.compat.as_bytes(clss)
+		#clss = tf.compat.as_bytes(clss)
 		
 		feature = {
 			'image':_bytes_feature(im),
-			'label':_bytes_feature(clss)
+			'label':_int64_feature(clss)
 		}
 
 		tf_example = tf.train.Example(
@@ -197,8 +205,8 @@ class TFRecordsCreator:
 
 		for _ in tqdm(range(total_its)):
 			batch = self.data_loader.next_batch(bs)
-			fname = str(self.idx_tfrecord+'.tfrecords')
-			fn_tfr = os.path.join(out_dir,fnames)
+			fname = str(self.idx_tfrecord)+'.tfrecords'
+			filename_tfrecord = os.path.join(out_dir,fname)
 			with tf.python_io.TFRecordWriter(filename_tfrecord) as writer:
 				self.data_writer(batch,writer)
 			self.idx_tfrecord += 1
