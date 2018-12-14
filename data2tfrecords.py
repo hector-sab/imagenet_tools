@@ -55,7 +55,7 @@ class TFRCreatorImageNetClassifier:
 
 
 		self.data = ImageNetTool(fpaths=self.fpaths_path,ims_dir=self.ims_dir,
-			bboxes_dir=self.bboxes_dir,json_path=self.json_path)
+			bboxes_dir=self.lbs_dir,json_path=self.json_path)
 
 		self.total_items = self.data.total_items
 		self.idx_tfrecord = 0 # Used to name tfrecord files
@@ -64,7 +64,7 @@ class TFRCreatorImageNetClassifier:
 		self.clss2ind = {}
 		for key in self.data.id2class_dict:
 			cname = self.data.id2class_dict[key][0]
-			self.clss2ind[cname] = self.loader.id2class_dict[key][1]
+			self.clss2ind[cname] = self.data.id2class_dict[key][1]
 
 		self.preprocessing = None
 
@@ -115,7 +115,7 @@ class TFRCreatorImageNetClassifier:
 			
 			with tf.python_io.TFRecordWriter(filename_tfrecord) as writer:
 				for im,class_name in zip(batch['images'],batch['classes']):
-					if preprocessing is not None
+					if self.preprocessing is not None:
 						im = self.preprocessing(im)
 					ind = self.clss2ind[class_name]
 					self.data2tfrecord(im,ind,writer)

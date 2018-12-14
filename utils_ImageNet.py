@@ -1,3 +1,5 @@
+# Validation and bounding boxes
+# http://www.image-net.org/challenges/LSVRC/2012/nonpub-downloads
 import os
 import cv2
 import json
@@ -188,7 +190,7 @@ class ImageNetTool:
 	# Object that facilitates the retrieval of data from the ImageNet
 	# dataset.
 	def __init__(self,fpaths,ims_dir,bboxes_dir=None,json_path=None,
-		rand=False):
+		rand=False,val_lbs_paths=None):
 		# Args:
 		#    fpaths (str): Path to the txt file containing the paths of the files
 		#    ims_dir (str): Directory containing the folders of the images
@@ -197,14 +199,25 @@ class ImageNetTool:
 		#        between the id's and the name of the classes
 
 		self.paths = self.load_fpaths(fpaths) # Contains the paths to all the data
-		if rand: shuffle(self.paths)
+		
+		# For validation...
+		self.val_lbs = val_lbs_paths
+		if self.val_lbs is not None:
+			self.val_lbs = self.load_val_lbs(val_lbs_paths)
+			
+		if rand and self.val_lbs is None: 
+			shuffle(self.paths)
+		else:
+			tmp = list(zip(self.paths,self.val_lbs))
+			shuffle(tmp)
+			self.paths,self.val_lbs = zip(*tmp)
 		self.ims_dir = ims_dir # Directory of the folders containing the images
 		self.bboxes_dir = bboxes_dir # Directory of the folders containing the xml's
 		
 		self.id2class_dict = self.load_json(json_path) # Contains a dict with
 		                                              # the conversion between ids
-		                                              # and classes
-
+		                                              # and classes {'n4080':['person',14]}
+		
 		self.total_items = len(self.paths)
 		self.current_ind = 0
 
@@ -228,6 +241,15 @@ class ImageNetTool:
 			line = line.split(' ')
 			paths.append(line[0])
 		return(paths)
+
+	def load_val_lbs(self,path):
+		with open(path,'r') as f:
+			lines = f.readlines()
+		lbs = []
+		for line in lines:
+			line = line.strip('\n')
+			lbs.append(int(line))
+		return(lbs)
 
 	def load_image(self,path):
 		im = None
@@ -273,14 +295,22 @@ class ImageNetTool:
 		classes = []
 		bboxes = []
 
-		for path in paths:
+		for i in range(len(paths)):
+			path = paths[i]
 			im_path = os.path.join(self.ims_dir,path+'.JPEG')
 			bbox_path = None
 			if self.bboxes_dir is not None:
 				bbox_path = os.path.join(self.bboxes_dir,path+'.xml')
+
 			ident = path.split('/')[0]
 
 			im,clss,bbox = self.get_single_data(im_path,ident,bbox_path)
+
+			# If self.val_lbs_paths is not None, ident will be None.
+			# To fix it, use val_lbs instead
+			if self.val_lbs is not None:
+				clss = self.val_lbs[i]
+
 			ims.append(im)
 			classes.append(clss)
 			bboxes.append(bbox)
