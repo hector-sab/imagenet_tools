@@ -256,7 +256,7 @@ def _extract_features(example):
 	features = {
 			'image':tf.FixedLenFeature([],tf.string),
 			'height':tf.FixedLenFeature([], tf.int64),
-			'width':tf.FixedLenFeature([], tf.int64).
+			'width':tf.FixedLenFeature([], tf.int64),
 			'label':tf.FixedLenFeature([], tf.int64)
 		}
 	parse_example = tf.parse_single_example(example,features)
