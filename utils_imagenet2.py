@@ -69,6 +69,8 @@ def _int64_feature(value):
 			value=[value])))
 
 class ILSVRC2012TrainDataLoader:
+	# Returns the images and its labels from the ILSVRC2012
+	# through the next_batch method
 	def __init__(self,fpaths,ims_dir,lbs_dir=None,
 		json_path=None,rand=False):
 		# Args:
@@ -165,6 +167,35 @@ class ILSVRC2012TrainDataLoader:
 	def reset(self):
 		self.current_ind = 0
 
+def CentralImageExtractor(batch,new_shape=(208,208)):
+	# new_shape (tuple): (height,width)
+	for i in range(len(batch['images'])):
+		im = batch['images'][i]
+		height = im.shape[0]
+		width = im.shape[1]
+
+		# Ensure that the centered image of dimmensions new_shape
+		# can be obtained from the original image
+		sf = 1.1 # safety factor
+		if height<new_shape[0]:
+			h_s = (new_shape[0]/height)*sf
+			im = cv2.resize(im,None,fy=h_s,fx=h_s)
+		
+		if width<new_shape[1]:
+			w_s = (new_shape[1]/width)*sf
+			im = cv2.resize(im,None,fy=w_s,fx=w_s)
+
+		ind_h = int((im.shape[0]-new_shape[0])/2)
+		ind_w = int((im.shape[1]-new_shape[1])/2)
+
+		new_im = im[ind_h:ind_h+new_shape[0],ind_h:ind_w+new_shape[1]]
+		batch['images'][i] = np.copy(new_im)
+
+	return(batch)
+
+
+
+
 def ILSVRC2012TrainCLSDataWriter(batch,writer):
 	# https://mc.ai/storage-efficient-tfrecord-for-images/
 	for im,clss in zip(batch['images'],batch['classes']):
@@ -187,8 +218,9 @@ def ILSVRC2012TrainCLSDataWriter(batch,writer):
 		writer.write(tf_example.SerializeToString())
 
 class TFRecordsCreator:
-	def __init__(self,data_loader,data_writer):
+	def __init__(self,data_loader,data_writer,preprocess=None):
 		self.data_loader = data_loader
+		self.preprocess = preprocess
 		self.data_writer = data_writer
 		self.total_items = self.data_loader.total_items
 		self.idx_tfrecord = 0 # Used to name tfrecord files
@@ -208,9 +240,11 @@ class TFRecordsCreator:
 			total_its += 1
 
 		for _ in tqdm(range(total_its)):
-			batch = self.data_loader.next_batch(bs)
 			fname = str(self.idx_tfrecord)+'.tfrecords'
 			filename_tfrecord = os.path.join(out_dir,fname)
+			batch = self.data_loader.next_batch(bs)
+			if self.preprocess is not None:
+				batch = self.preprocess(batch)
 			with tf.python_io.TFRecordWriter(filename_tfrecord) as writer:
 				self.data_writer(batch,writer)
 			self.idx_tfrecord += 1
@@ -221,32 +255,34 @@ class TFRecordsCreator:
 def _extract_features(example):
 	features = {
 			'image':tf.FixedLenFeature([],tf.string),
+			'height':tf.FixedLenFeature([], tf.int64),
+			'width':tf.FixedLenFeature([], tf.int64).
 			'label':tf.FixedLenFeature([], tf.int64)
 		}
 	parse_example = tf.parse_single_example(example,features)
 	image = tf.decode_raw(parsed_example['image'],tf.float32)
-	label = tf.cast(parsed_example['image'],tf.int32)
+	height = tf.cast(parsed_example['height'],tf.int32)
+	width = tf.cast(parsed_example['width'],tf.int32)
+	label = tf.cast(parsed_example['label'],tf.int32)
+
+	#https://github.com/tensorflow/tensorflow/issues/10492#issuecomment-307732465
+	image = tf.reshape(image,[height,width,3])
 	return(image,label)
 
 
 class ILSVRC2012TrainTFRecordDataLoader:
-	def __init__(self,data_dir):
+	def __init__(self,data_dir,bs,epochs):
 		#https://medium.com/@dikatok/making-life-better-read-easier-with-tensorflow-dataset-api-fb91851e51f4
+		#http://www.machinelearninguru.com/deep_learning/tensorflow/basics/tfrecord/tfrecord.html
+		#https://medium.com/ymedialabs-innovation/data-augmentation-techniques-in-cnn-using-tensorflow-371ae43d5be9
 		fnames = sorted(os.listdir(data_dir))
 		fnames = [os.path.join(data_dir,x) for x in self.fnames]
 		self.dataset = tf.data.TFRecordDataset(self.fnames)
-
-		
-		#http://www.machinelearninguru.com/deep_learning/tensorflow/basics/tfrecord/tfrecord.html
-		self.features = {
-			'image':tf.FixedLenFeature([],tf.string),
-			'label':tf.FixedLenFeature([], tf.int64)
-		}
-
+		self.dataset = self.dataset.map(_extract_features)
+		self.dataset = self.dataset.batch(bs)
+		self.iterator = self.dataset.make_initializable_iterator()
 		
 
-	def next_batch(self):
-		features = tf.parse_single_example()
 		
 
 class TFRecordsLoader:
@@ -264,7 +300,8 @@ if __name__=='__main__':
 	json_path = 'id2class.json'
 
 	data_loader = ILSVRC2012TrainDataLoader(fpaths_path,ims_dir,lbs_dir,json_path,rand=True)
+	preprocess = CentralImageExtractor
 	data_writer = ILSVRC2012TrainCLSDataWriter
-	creator = TFRecordsCreator(data_loader,data_writer)
+	creator = TFRecordsCreator(data_loader,data_writer,preprocess)
 
 	creator.create(out_dir='/data/HectorSanchez/database/imagenet_tfrecords/train_cls/')
