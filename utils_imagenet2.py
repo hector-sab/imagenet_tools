@@ -193,9 +193,6 @@ def CentralImageExtractor(batch,new_shape=(208,208)):
 
 	return(batch)
 
-
-
-
 def ILSVRC2012TrainCLSDataWriter(batch,writer):
 	# https://mc.ai/storage-efficient-tfrecord-for-images/
 	for im,clss in zip(batch['images'],batch['classes']):
@@ -260,14 +257,18 @@ def _extract_features(example):
 			'label':tf.FixedLenFeature([], tf.int64)
 		}
 	parse_example = tf.parse_single_example(example,features)
-	image = tf.decode_raw(parsed_example['image'],tf.float32)
+	#image = tf.decode_raw(parsed_example['image'],tf.float32)
+	image = tf.cast(tf.image.decode_jpeg(parsed_example['image'],tf.float32))
+	# Set size
 	height = tf.cast(parsed_example['height'],tf.int32)
 	width = tf.cast(parsed_example['width'],tf.int32)
-	label = tf.cast(parsed_example['label'],tf.int32)
-
 	#https://github.com/tensorflow/tensorflow/issues/10492#issuecomment-307732465
 	image = tf.reshape(image,[height,width,3])
+	
+	label = tf.cast(parsed_example['label'],tf.int32)
+
 	return(image,label)
+
 
 
 class ILSVRC2012TrainTFRecordDataLoader:
@@ -276,11 +277,12 @@ class ILSVRC2012TrainTFRecordDataLoader:
 		#http://www.machinelearninguru.com/deep_learning/tensorflow/basics/tfrecord/tfrecord.html
 		#https://medium.com/ymedialabs-innovation/data-augmentation-techniques-in-cnn-using-tensorflow-371ae43d5be9
 		fnames = sorted(os.listdir(data_dir))
-		fnames = [os.path.join(data_dir,x) for x in self.fnames]
-		self.dataset = tf.data.TFRecordDataset(self.fnames)
-		self.dataset = self.dataset.map(_extract_features)
-		self.dataset = self.dataset.batch(bs)
+		fnames = [os.path.join(data_dir,x) for x in fnames]
+		dataset = tf.data.TFRecordDataset(fnames)
+		dataset = dataset.map(_extract_features)
+		self.dataset = dataset.batch(bs)
 		self.iterator = self.dataset.make_initializable_iterator()
+		self.next_batch = self.iterator.get_next()
 		
 
 		
